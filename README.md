@@ -64,7 +64,7 @@ id : 7
 
   - Factory method: Whenever we create an instance of our application , we have to call NestFactory.create method(), and we can provide the type of application we want in order to have specific methods available for our app object. Thus the logic that our app providers is delegated to the child classes dependending on the method we provide. 
 
-  - Decorator : Nest.JS let us use different type of decorators for different purposes like getting the body content, request parameters or for validating or authentication purposes. This decorators "wrap" the class or property we want to decorate and adds new behavior to this. The main difference between how Nest.JS applies the decorator pattern from what is tipically defined is that in Nest.JS we can use decorators on classes and not objects. 
+  - Decorator : Nest.JS let us use different type of decorators for different purposes like getting the body content, request parameters or for validating or authentication purposes. This decorators "wrap" the class or property we want to decorate and adds new behavior to this. The main difference between how Nest.JS applies the decorator pattern from what is tipically defined is that in Nest.JS we can use decorators on classes, properties and parameters and not objects. 
   Another use of decorators in Nest.JS is when creating controlles , since we have to use decorators to wrap the class that defines our controller with the @Controller decorator, also the @Injectable decorator is used for defining a class as a provider (it has some other uses).
 
   - Chain of responsability : When wrapping various guards, pipes or middlewares to a class or property, Nest.JS "creates" a chain of responsability to decide if a request should be processed by the actual handler (middleware,pipes,guards) or pass it to the next handler or in some cases stop passing the request (in case it's an error). 
@@ -76,4 +76,74 @@ id : 7
 
   - An antipattern is any piece of code that holds back our application from being scalable, modular or hard to maintain, mainly by trying to solve a problem and while succeeding at this, it also brings more problems to our code. 
 
+  - Dependency injection example: 
+  ```typescript
+  //First we define an interface that is able to tell us what an object is an instance of. 
+    interface Type<T> {
+    new (...args: any[]): T;
+  }
 
+  // Here we define a generic type of decorator that will need the type of an object.
+  type GenericClassDecorator<T> = (target: T) => void;
+
+  // Now we can create a decorator in order to decorate all our service classes to get their metadata. 
+  const Service = (): GenericClassDecorator<Type<object>> => {
+    return (target: Type<object>) => {};
+  };
+
+  export const Injector = new (class {
+    // Resolving instances
+    resolve<T>(target: Type<any>): T {
+      // Tokens are required dependencies
+      const tokens = Reflect.getMetadata('design:paramtypes', target) || [];
+      // Injections are resolved tokens from the        Injector
+      const injections = tokens.map(token => Injector.resolve<any>(token));
+
+      return new target(...injections);
+    }
+  })();
+
+  // Example class to be injected into another
+  @Service()
+  class InjectableExample {
+    doSomething() {
+      console.log('foo');
+    }
+  }
+
+  // Now we can inject via the constructor of the class!
+  @Service()
+  class Test {
+    constructor(public example: InjectableExample) {}
+  }
+
+  // We instantiate the Test class
+  const test = Injector.resolve<Test>(Test);
+  // We are able to use the doSomething method since a InjectableExample object is now a property via constructor injection .
+  test.example.doSomething();
+
+- 1. Implement at least 2 design patterns in your API (the ones implemented by Nest.js won't be taken into account). Document: Why did you use them?
+  - Repository Pattern : I decided to use the repository pattern since TypeORM already provides  a base repository class, and thus I could extend from it and create my own repositories. This allows me to separate the database logic from business logic (respecting the single responsability principle), and also make my database functionality reusable in other class and not just on my service class.
+
+  - Observer Pattern : When we use the httpModule provided by Nest.JS to make an http request it returns an observable, though we can convert this 
+  observable to a promise, I decided to use it as an observable since we can transform our data to the shape we need , by using various methods on the pipe method from the observer. Also Nest.JS is able to resolve observables by itself, so I didn't have to do focus on that part.
+
+  - Strategy: When using the PassPort module we have to decide which "strategy" we want to use, or in other words we have to decide which kind of behaviour we want our passport strategy to use. I decided to implement the strategy by telling PassPort to use the 'JWT' strategy, because of that the "parsing" behaviour behind passport (to get data from a token) worked as JWT token parser, and we could implement different behaviours by giving different strategies. 
+
+2. Remove all antipatterns that you can found on your API side. Document: 1. Why did you think it is an antipattern?
+
+  - Lava Flow : I removed some interfaces and code that I wasn't using anymore, I think this is an antipattern because I shouldn't have unused code in my application, since it just makes it more disorganized and confusing. 
+
+  - Functional Decompositition: I also had some "loose" functions and instances of objects in different files, which means I was following a more procedural style, instead of distributing responsabilities and modularizing my design.  
+
+3. Document: 1. Which patterns did you use? 2. Which antipatterns did you remove (if any)
+
+- Patterns: 
+
+  - Repository
+  - Strategy
+  - Observer
+
+- Antipatterns removed: 
+  - Lava Flow.
+  - Functional Decomposition

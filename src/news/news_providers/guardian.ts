@@ -1,22 +1,27 @@
-import { ProviderDto } from '../dto/provider.dto';
 import { Guardian, News, ApiProvider } from '../interfaces /news.interface';
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
-const url2 = 'https://content.guardianapis.com/search?&show-fields=byline';
+@Injectable()
+export class TheGuardianProvider implements ApiProvider<Guardian> {
+  constructor(private readonly configService: ConfigService) {}
 
-function parser(res: Guardian): News[] {
-  return res.response.results.map(gNew => {
-    return {
-      id: gNew.id,
-      title: gNew.webTitle,
-      author: gNew.fields.byline,
-      publicationDate: gNew.webPublicationDate,
-      webUrl: gNew.webUrl,
-    };
-  });
+  url = this.configService.get('TG_URL');
+  apiKey = this.configService.get('GUARDIAN_API_KEY');
+
+  parse(res: Guardian): News[] {
+    return res.response.results.map(gNew => {
+      return {
+        id: gNew.id,
+        title: gNew.webTitle,
+        author: gNew.fields.byline,
+        publicationDate: gNew.webPublicationDate,
+        webUrl: gNew.webUrl,
+      };
+    });
+  }
+
+  buildUrl(search: string): string {
+    return this.url + `&api-key=${this.apiKey}&q=${search}`;
+  }
 }
-
-function buildUrl(search: string, apiKey: string): string {
-  return url2 + `&api-key=${apiKey}&q=${search}`;
-}
-
-export const guardianProvider = new ProviderDto<Guardian>(url2, parser, buildUrl);

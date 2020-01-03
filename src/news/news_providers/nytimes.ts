@@ -1,23 +1,27 @@
-import { NYTimes, News } from '../interfaces /news.interface';
-import { ProviderDto } from '../dto/provider.dto';
+import { NYTimes, News, ApiProvider } from '../interfaces /news.interface';
+import { ConfigService } from '@nestjs/config';
+import { Injectable } from '@nestjs/common';
 
-const url = `https://api.nytimes.com/svc/search/v2/articlesearch.json?&fl=headline,section_name,
-   document_type,_id,pub_date,web_url,byline`;
+@Injectable()
+export class NYTimesProvider implements ApiProvider<NYTimes> {
+  constructor(private readonly configService: ConfigService) {}
 
-function parser(res: NYTimes): News[] {
-  return res.response.docs.map(nyNew => {
-    return {
-      id: nyNew._id,
-      title: nyNew.headline.main,
-      author: nyNew.byline.original,
-      publicationDate: nyNew.pub_date,
-      webUrl: nyNew.web_url,
-    };
-  });
+  url = this.configService.get('NY_API_URL');
+  apiKey = this.configService.get('NY_API_KEY');
+
+  parse(res: NYTimes): News[] {
+      return res.response.docs.map(nyNew => {
+        return {
+          id: nyNew._id,
+          title: nyNew.headline.main,
+          author: nyNew.byline.original,
+          publicationDate: nyNew.pub_date,
+          webUrl: nyNew.web_url,
+        };
+    });
+  }
+
+  buildUrl(search: string): string {
+    return this.url + `&api-key=${this.apiKey}&q=${search}`;
+  }
 }
-
-function buildUrl(search: string, apiKey: string): string {
-  return url + `&api-key=${apiKey}&q=${search}`;
-}
-
-export const nyTimesProvider = new ProviderDto<NYTimes>(url, parser, buildUrl);

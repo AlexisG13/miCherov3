@@ -7,16 +7,15 @@ import {
 } from '@nestjs/common';
 import { map, catchError, reduce } from 'rxjs/operators';
 import { Observable, merge } from 'rxjs';
-import { News } from './interfaces /news.interface';
+import { News, ApiProvider } from './interfaces /news.interface';
 import { NewsFilterDto } from './dto/get-news-filter.dto';
-import { ProviderDto } from './dto/provider.dto';
-import { guardianProvider } from './news_providers/guardian';
-import { nyTimesProvider } from './news_providers/nytimes';
 import { ConfigService } from '@nestjs/config';
-import { newsApiProvider } from './news_providers/news_api';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Article } from './entities/article.entity';
 import { ArticleRepository } from './repositories/articles.repository';
+import { NYTimesProvider } from './news_providers/nytimes';
+import { TheGuardianProvider } from './news_providers/guardian';
+import { NewsApiProvider } from './news_providers/news_api';
 
 @Injectable()
 export class NewsService {
@@ -25,7 +24,15 @@ export class NewsService {
     private readonly configService: ConfigService,
     @InjectRepository(ArticleRepository)
     private readonly newsRepository: ArticleRepository,
+    private readonly nyProvider: NYTimesProvider,
+    private readonly tgProvider: TheGuardianProvider,
+    private readonly newsApiProvider: NewsApiProvider,
   ) {}
+
+  availableProviders = new Map()
+    .set('ny', this.nyProvider)
+    .set('guardian', this.tgProvider)
+    .set('newsApi', this.newsApiProvider);
 
   async getArticleByID(id: number): Promise<Article> {
     const found = await this.newsRepository.findOne(id);
@@ -43,11 +50,6 @@ export class NewsService {
     return found;
   }
 
-  availableProviders = new Map()
-    .set('ny', nyTimesProvider.init(this.configService.get<string>('NY_API_KEY')))
-    .set('guardian', guardianProvider.init(this.configService.get<string>('GUARDIAN_API_KEY')))
-    .set('newsApi', newsApiProvider.init(this.configService.get<string>('NEWS_API_KEY')));
-
   searchAllProviders(search: string): Observable<News[]> {
     const news: Array<Observable<News[]>> = [];
     this.availableProviders.forEach(provider => {
@@ -56,14 +58,14 @@ export class NewsService {
     return merge(...news).pipe(reduce((acc, val) => [...acc, ...val]));
   }
 
-  searchSingleProvider<T>(search: string, provider: ProviderDto<T>): Observable<News[]> {
-    const query = provider.buildUrl(search, provider.apiKey);
+  searchSingleProvider<T>(search: string, provider: ApiProvider<T>): Observable<News[]> {
+    const query = provider.buildUrl(search);
     return this.httpService.get<T>(query).pipe(
       map(res => res.data),
       catchError(err => {
         throw new UnprocessableEntityException('An error ocurred with the provider API');
       }),
-      map(provider.parser),
+      map(provider.parse),
     );
   }
 
