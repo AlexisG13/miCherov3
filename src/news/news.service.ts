@@ -17,6 +17,12 @@ import { NYTimesProvider } from './news_providers/nytimes';
 import { TheGuardianProvider } from './news_providers/guardian';
 import { NewsApiProvider } from './news_providers/news_api';
 
+enum providers {
+  'ny',
+  'guardian',
+  'newsApi',
+}
+
 @Injectable()
 export class NewsService {
   constructor(
@@ -30,9 +36,9 @@ export class NewsService {
   ) {}
 
   availableProviders = new Map()
-    .set('ny', this.nyProvider)
-    .set('guardian', this.tgProvider)
-    .set('newsApi', this.newsApiProvider);
+    .set(providers[0], this.nyProvider)
+    .set(providers[1], this.tgProvider)
+    .set(providers[2], this.newsApiProvider);
 
   async getArticleByID(id: number): Promise<Article> {
     const found = await this.newsRepository.findOne(id);
