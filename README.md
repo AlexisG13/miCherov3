@@ -78,50 +78,27 @@ id : 7
 
   - Dependency injection example: 
   ```typescript
-  //First we define an interface that is able to tell us what an object is an instance of. 
-    interface Type<T> {
-    new (...args: any[]): T;
+  // First we create the class to be injected into another one
+  class UserService{
+    getUsers();
   }
+  // Then we create the class that is going to need an injection of the latter class 
+  class UserController{
+    // We have to add an instance of the class as a parameter in our constructor in order to inject it 
+    constructor(userService : UserService)
 
-  // Here we define a generic type of decorator that will need the type of an object.
-  type GenericClassDecorator<T> = (target: T) => void;
-
-  // Now we can create a decorator in order to decorate all our service classes to get their metadata. 
-  const Service = (): GenericClassDecorator<Type<object>> => {
-    return (target: Type<object>) => {};
-  };
-
-  export const Injector = new (class {
-    // Resolving instances
-    resolve<T>(target: Type<any>): T {
-      // Tokens are required dependencies
-      const tokens = Reflect.getMetadata('design:paramtypes', target) || [];
-      // Injections are resolved tokens from the        Injector
-      const injections = tokens.map(token => Injector.resolve<any>(token));
-
-      return new target(...injections);
-    }
-  })();
-
-  // Example class to be injected into another
-  @Service()
-  class InjectableExample {
-    doSomething() {
-      console.log('foo');
+    getAllUsers(){
+      // Now we can use the injected instance and it's methods on our controller
+      this.userService.getUsers();
     }
   }
-
-  // Now we can inject via the constructor of the class!
-  @Service()
-  class Test {
-    constructor(public example: InjectableExample) {}
-  }
-
-  // We instantiate the Test class
-  const test = Injector.resolve<Test>(Test);
-  // We are able to use the doSomething method since a InjectableExample object is now a property via constructor injection .
-  test.example.doSomething();
-
+  // Example instance of the UserService
+  const userService = new UserService();
+  // Now we create an instance of our UserController and we inject the UserService instance
+  const userController = new UserController(userService);
+  // Tada! We can use the methods successfully
+  userController.getAllUsers();
+  ```
 - 1. Implement at least 2 design patterns in your API (the ones implemented by Nest.js won't be taken into account). Document: Why did you use them?
   - Repository Pattern : I decided to use the repository pattern since TypeORM already provides  a base repository class, and thus I could extend from it and create my own repositories. This allows me to separate the database logic from business logic (respecting the single responsability principle), and also make my database functionality reusable in other class and not just on my service class.
 
